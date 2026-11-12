@@ -76,6 +76,12 @@ leaves the home network. 255.255.255.255 is used only when the TV can't tell its
 
 Wired Ethernet is the reliable case. Waking from a full shutdown on Windows often also needs Fast startup off.
 
+A line above the pills takes over from the hidden Wi-Fi pill: the network name (Android shows it only while the
+TV's Location setting is on; otherwise it says Wi-Fi or Ethernet) and, once a PC input is set, a green **PC on** or
+grey **PC off**. On means the PC's HDMI input has a picture, as the TV reports it; it changes when the TV says so,
+with no polling. A PC that isn't sending a picture to the TV (the TV isn't one of its displays) shows as off.
+With the PC on, the dialog says "The PC is on" and **Switch** goes straight to its input.
+
 ## Settings menu
 
 With `settings_menu` on (config.xml or a theme's `"settings_menu": true`), a click on **Settings** drops a menu

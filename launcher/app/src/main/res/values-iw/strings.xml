@@ -171,4 +171,7 @@
     <string name="wake_pc_mac_invalid">זו לא כתובת MAC. יש בה 12 אותיות וספרות, כמו AA-BB-CC-DD-EE-FF.</string>
     <string name="wake_pc_save">שמירה</string>
     <string name="wake_pc_remove">הסרה</string>
+    <string name="pc_status_on">המחשב פועל</string>
+    <string name="pc_status_off">המחשב כבוי</string>
+    <string name="wake_pc_confirm_on">המחשב פועל. עובר אל %1$s.</string>
 </resources>

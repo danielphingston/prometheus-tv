@@ -180,4 +180,8 @@
     <string name="wake_pc_mac_invalid">That isn\'t a MAC address. It has 12 letters and digits, like AA-BB-CC-DD-EE-FF.</string>
     <string name="wake_pc_save">Save</string>
     <string name="wake_pc_remove">Remove</string>
+    <!-- The line above the pills: whether the PC's input (wake_pc_input) has a picture. -->
+    <string name="pc_status_on">PC on</string>
+    <string name="pc_status_off">PC off</string>
+    <string name="wake_pc_confirm_on">The PC is on. Switches to %1$s.</string>
 </resources>

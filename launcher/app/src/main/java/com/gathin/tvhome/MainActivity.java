@@ -190,6 +190,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView btnWifi;
     /** wake_pc_mac: takes the network pill's place and wakes that PC, after a confirmation. */
     private TextView btnWakePc;
+    private View topStatus;
+    private TextView statusNet, statusPc;
+    private boolean pcOn, pcStatusWanted;
     private String wakePcMac = "";
     private String wakePcInput = "";
     /** The network pill's icon as last set, so a refresh that changes nothing does not lay the top bar out again. */
@@ -407,6 +410,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         @Override
         public void onInputRemoved(String inputId) {
             updateInputsButton();
+        }
+
+        /** The TV says so when a source starts or stops sending a picture: the PC status follows, without polling. */
+        @Override
+        public void onInputStateChanged(String inputId, int state) {
+            updatePcStatus();
         }
     };
     /** Listens for any VPN coming up or going down, even one this app's traffic is excluded from. */
@@ -870,6 +879,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnWifi.setVisibility(View.GONE);
             btnWakePc.setVisibility(View.VISIBLE);
             btnWakePc.setOnClickListener(v -> confirmWakePc());
+            // The Wi-Fi pill makes way for the PC, so its network name moves to a line above the pills, with
+            // whether the PC's input has a picture beside it.
+            topStatus = findViewById(R.id.topStatus);
+            statusNet = findViewById(R.id.statusNet);
+            statusPc = findViewById(R.id.statusPc);
+            topStatus.setVisibility(View.VISIBLE);
+            pcStatusWanted = !wakePcInput.isEmpty();
         }
         showInputsPill = cfg.showInputsPill;
         showInputsMenuRow = cfg.showInputsPill;
@@ -1167,6 +1183,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else {
             updateWifiLabel();
             updateInputsButton();
+            updatePcStatus();
             pillsShown = true;
         }
         if (showStats) startStats();
@@ -3059,6 +3076,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (isDestroyed()) return;
                     updateWifiLabel();
                     updateInputsButton();
+                    updatePcStatus();
                 });
                 return true;
             }
@@ -3070,11 +3088,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void confirmWakePc() {
         String input = wakePcInput;
         CharSequence inputName = input.isEmpty() ? null : WakeOnLan.inputLabel(this, input);
+        updatePcStatus();
+        // On (its input has a picture): the dialog offers the switch. Off, or no input: it offers to turn it on.
+        boolean on = inputName != null && pcOn;
         new AlertDialog.Builder(this)
-                .setTitle(inputName == null ? R.string.wake_pc_confirm_title : R.string.wake_pc_confirm_title_input)
+                .setTitle(on ? R.string.wake_pc_confirm_title_input : R.string.wake_pc_confirm_title)
                 .setMessage(inputName == null ? getString(R.string.wake_pc_confirm)
-                        : getString(R.string.wake_pc_confirm_input, inputName))
-                .setPositiveButton(inputName == null ? R.string.wake_pc_send : R.string.wake_pc_switch, (d, w) -> {
+                        : getString(on ? R.string.wake_pc_confirm_on : R.string.wake_pc_confirm_input, inputName))
+                .setPositiveButton(on ? R.string.wake_pc_switch : R.string.wake_pc_send, (d, w) -> {
                     // Sent either way: a PC that is already on ignores it. With an input, the switch itself shows
                     // it worked, so only a failure gets a toast.
                     sendWakePc(inputName == null);
@@ -3083,6 +3104,53 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /** The network line above the pills: the same name and icon the Wi-Fi pill would show, dimmed while offline. */
+    private void setStatusNet(String text, int icon, boolean online) {
+        Drawable d = getDrawable(icon);
+        if (d != null) {
+            d = d.mutate();
+            int size = Math.round(16 * density);
+            d.setBounds(0, 0, size, size);
+            d.setTint(online ? 0xD9FFFFFF : 0x80FFFFFF);
+        }
+        statusNet.setCompoundDrawablesRelative(d, null, null, null);
+        if (!TextUtils.equals(statusNet.getText(), text)) statusNet.setText(text);
+    }
+
+    /**
+     * PC on or off from its input (wake_pc_input): on while the TV reports a picture there. A PC that sends no
+     * picture to the TV (the TV is not one of its displays) shows as off. Not shown on a TV whose HDMI states are
+     * wrong (inputs_cec_state_only, or every port connected, as on Sony).
+     */
+    private void updatePcStatus() {
+        if (statusPc == null || !pcStatusWanted) return;
+        boolean known = false, on = false;
+        try {
+            TvInputManager tim = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
+            if (tim != null && !inputsCecStateOnly) {
+                int ports = 0, connected = 0;
+                for (TvInputInfo info : tim.getTvInputList()) {
+                    if (!info.isPassthroughInput() || info.getType() != TvInputInfo.TYPE_HDMI || info.getParentId() != null) continue;
+                    ports++;
+                    if (tim.getInputState(info.getId()) == TvInputManager.INPUT_STATE_CONNECTED) connected++;
+                }
+                known = !(ports > 1 && connected == ports);
+                on = known && tim.getInputState(wakePcInput) == TvInputManager.INPUT_STATE_CONNECTED;
+            }
+        } catch (RuntimeException ignored) {
+        }
+        pcOn = on;
+        statusPc.setVisibility(known ? View.VISIBLE : View.GONE);
+        if (!known) return;
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(on ? 0xFF34C759 : 0x80FFFFFF);
+        int size = Math.round(9 * density);
+        dot.setBounds(0, 0, size, size);
+        statusPc.setCompoundDrawablesRelative(dot, null, null, null);
+        statusPc.setText(on ? R.string.pc_status_on : R.string.pc_status_off);
     }
 
     /** Sends the wake signal off the main thread; with toast, says that it went out. A failure always says so. */
@@ -3144,6 +3212,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         } catch (Exception ignored) {
         }
+        if (statusNet != null) setStatusNet(text, icon, online);
         // With a VPN app configured, a VPN that is down matters too: show a red "VPN off" capsule then.
         boolean vpnDown = !vpn && online && !vpnApp.isEmpty();
         if (vpnPill) updateVpnPill(vpn);

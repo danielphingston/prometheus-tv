@@ -336,6 +336,50 @@
                 android:focusable="false"
                 android:visibility="gone" />
 
+            <!-- wake_pc_mac: the network and, with wake_pc_input, whether the PC's input has a picture, above the pills. -->
+            <LinearLayout
+                android:id="@+id/topStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_above="@+id/topButtons"
+                android:layout_alignStart="@+id/topButtons"
+                android:layout_marginBottom="6dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:focusable="false"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/statusNet"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxWidth="360dp"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:drawablePadding="6dp"
+                    android:textColor="#D9FFFFFF"
+                    android:textSize="14sp"
+                    android:fontFamily="@string/font_medium"
+                    android:letterSpacing="0.04"
+                    android:focusable="false" />
+
+                <TextView
+                    android:id="@+id/statusPc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:singleLine="true"
+                    android:drawablePadding="6dp"
+                    android:textColor="#D9FFFFFF"
+                    android:textSize="14sp"
+                    android:fontFamily="@string/font_medium"
+                    android:letterSpacing="0.04"
+                    android:focusable="false"
+                    android:visibility="gone" />
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/topButtons"
                 android:layout_width="wrap_content"
