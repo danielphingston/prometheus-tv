@@ -152,4 +152,26 @@
     <string name="clock_format_system">מערכת</string>
     <string name="clock_format_12">12 שעות</string>
     <string name="clock_format_24">24 שעות</string>
+    <string name="continue_watching_title">המשך צפייה</string>
+    <string name="wake_pc">מחשב</string>
+    <string name="wake_pc_confirm_title">להדליק את המחשב?</string>
+    <string name="wake_pc_confirm">מעיר את המחשב דרך הרשת אם הוא במצב שינה.</string>
+    <string name="wake_pc_confirm_title_input">לעבור למחשב?</string>
+    <string name="wake_pc_switch">מעבר</string>
+    <string name="wake_pc_send">הדלקה</string>
+    <string name="wake_pc_sent">אות ההפעלה נשלח</string>
+    <string name="wake_pc_failed">אין חיבור לרשת, לא ניתן להדליק את המחשב</string>
+    <string name="wake_pc_confirm_input">מעיר את המחשב אם הוא במצב שינה, ואז עובר אל %1$s.</string>
+    <string name="wake_pc_state">מחשב (Wake-on-LAN): %1$s</string>
+    <string name="wake_pc_input_state">כניסת המחשב: %1$s</string>
+    <string name="wake_pc_input_title">הכניסה שהמחשב מחובר אליה</string>
+    <string name="wake_pc_input_none">לא לעבור</string>
+    <string name="wake_pc_mac_title">כתובת הרשת של המחשב (MAC)</string>
+    <string name="wake_pc_mac_help">הכתובת הפיזית של מתאם הרשת הקווי. ב-Windows: הגדרות, רשת, Ethernet, כתובת פיזית (MAC), או getmac /v בטרמינל.</string>
+    <string name="wake_pc_mac_invalid">זו לא כתובת MAC. יש בה 12 אותיות וספרות, כמו AA-BB-CC-DD-EE-FF.</string>
+    <string name="wake_pc_save">שמירה</string>
+    <string name="wake_pc_remove">הסרה</string>
+    <string name="pc_status_on">המחשב פועל</string>
+    <string name="pc_status_off">המחשב כבוי</string>
+    <string name="wake_pc_confirm_on">המחשב פועל. עובר אל %1$s.</string>
 </resources>

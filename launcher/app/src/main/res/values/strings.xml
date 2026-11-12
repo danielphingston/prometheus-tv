@@ -158,4 +158,30 @@
     <string name="clock_format_system">System</string>
     <string name="clock_format_12">12-hour</string>
     <string name="clock_format_24">24-hour</string>
+    <!-- Heading of the row below the dock (config.xml continue_watching). -->
+    <string name="continue_watching_title">Continue Watching</string>
+    <!-- The top-bar pill and its confirmation (config.xml wake_pc_mac). -->
+    <string name="wake_pc">PC</string>
+    <string name="wake_pc_confirm_title">Turn on the PC?</string>
+    <string name="wake_pc_confirm">Wakes the PC over the network if it\'s asleep.</string>
+    <string name="wake_pc_confirm_title_input">Switch to the PC?</string>
+    <string name="wake_pc_switch">Switch</string>
+    <string name="wake_pc_send">Turn on</string>
+    <string name="wake_pc_sent">Wake signal sent</string>
+    <string name="wake_pc_failed">Couldn\'t reach the network to turn on the PC</string>
+    <string name="wake_pc_confirm_input">Wakes the PC if it\'s asleep, then switches to %1$s.</string>
+    <string name="wake_pc_state">PC (Wake-on-LAN): %1$s</string>
+    <string name="wake_pc_input_state">PC input: %1$s</string>
+    <string name="wake_pc_input_title">Input the PC is on</string>
+    <string name="wake_pc_input_none">Don\'t switch</string>
+    <string name="wake_pc_mac_title">PC network address (MAC)</string>
+    <string name="wake_pc_mac_hint" translatable="false">AA-BB-CC-DD-EE-FF</string>
+    <string name="wake_pc_mac_help">Use the wired adapter\'s physical address. On Windows: Settings, Network, Ethernet, Physical address (MAC), or getmac /v in a terminal.</string>
+    <string name="wake_pc_mac_invalid">That isn\'t a MAC address. It has 12 letters and digits, like AA-BB-CC-DD-EE-FF.</string>
+    <string name="wake_pc_save">Save</string>
+    <string name="wake_pc_remove">Remove</string>
+    <!-- The line above the pills: whether the PC's input (wake_pc_input) has a picture. -->
+    <string name="pc_status_on">PC on</string>
+    <string name="pc_status_off">PC off</string>
+    <string name="wake_pc_confirm_on">The PC is on. Switches to %1$s.</string>
 </resources>

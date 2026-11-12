@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -187,6 +188,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** config show_inputs_pill: false keeps the Inputs pill hidden even when the TV has inputs. */
     private boolean showInputsPill = true;
     private TextView btnWifi;
+    /** wake_pc_mac: takes the network pill's place and wakes that PC, after a confirmation. */
+    private TextView btnWakePc;
+    private View topStatus;
+    private TextView statusNet, statusPc;
+    private boolean pcOn, pcStatusWanted;
+    private String wakePcMac = "";
+    private String wakePcInput = "";
     /** The network pill's icon as last set, so a refresh that changes nothing does not lay the top bar out again. */
     private int wifiIcon;
     /** The pills have been filled in once; later resumes refresh them after the first frame. */
@@ -360,6 +368,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean appLibrarySelection;
     private boolean libraryOkOpens;
     private boolean libraryFocusPending;
+    /** config.xml continue_watching: the row below the dock, or null when it is off. */
+    private ContinueRow continueRow;
+    /** The column focus left the dock or the first grid row from, to go back to from the Continue watching row. */
+    private int continueColumn;
     private RecyclerView.OnScrollListener pendingFocusScroll;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -398,6 +410,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         @Override
         public void onInputRemoved(String inputId) {
             updateInputsButton();
+        }
+
+        /** The TV says so when a source starts or stops sending a picture: the PC status follows, without polling. */
+        @Override
+        public void onInputStateChanged(String inputId, int state) {
+            updatePcStatus();
         }
     };
     /** Listens for any VPN coming up or going down, even one this app's traffic is excluded from. */
@@ -702,6 +720,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Order savedOrder = Order.load(Order.file(this));
         adapter.setSavedOrder(Order.ranks(savedOrder, dockApps), Order.docked(savedOrder, dockApps));
         grid.setAdapter(adapter);
+        if (cfg.continueWatching && dockRow && !singleRow) setUpContinueRow();
 
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
@@ -726,6 +745,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // A single row never shows the names under its tiles (the title above the row names the app), so the
             // 7dp gap and 22dp label item_app.xml keeps for them would only lift the row: sit it that much lower.
             if (singleRow && !cfg.alwaysShowNames) want += (int) (29 * density);
+            // continue_watching: raise the dock just enough for the row under it to fit on screen, no higher than
+            // the title's room above the dock.
+            if (continueRow != null && continueRow.hasItems()) {
+                View dock = grid.getLayoutManager() == null ? null : grid.getLayoutManager().findViewByPosition(0);
+                int band = dock != null ? grid.getLayoutManager().getDecoratedMeasuredHeight(dock) - continueRow.heightPx() : dockRow;
+                int lift = continueRow.heightPx() + (int) (12 * density) - (h - want - band);
+                int floor = Math.max(shelfClearance, cfg.dockTitle ? (int) (AppAdapter.TITLE_ROOM_DP * density) : 0);
+                if (lift > 0) want = Math.max(Math.min(want, floor), want - lift);
+            }
             if (grid.getPaddingTop() != want) {
                 grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
                 // A vertical grid parks the dock on the new padding line by scrolling (onTileFocused); a sideways
@@ -833,8 +861,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             ((TextView) btnSettings).setText(R.string.launcher_settings);
             ((TextView) btnSettings).setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_home_settings_pill, 0, 0, 0);
         }
+        settingsMenu = cfg.settingsMenu;
         btnSettings.setOnClickListener(v -> {
-            if (launcherSettingsButton) startActivityForResult(
+            if (settingsMenu) showSettingsMenu();
+            else if (launcherSettingsButton) startActivityForResult(
                     new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
             else open(systemIntent(Settings.ACTION_SETTINGS));
         });
@@ -842,6 +872,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnReorder.setOnClickListener(v -> toggleReorder());
         btnReorder.setVisibility(cfg.reorderButton ? View.VISIBLE : View.GONE);
         if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
+        btnWakePc = findViewById(R.id.btnWakePc);
+        wakePcMac = cfg.wakePcMac;
+        wakePcInput = cfg.wakePcInput;
+        if (!wakePcMac.isEmpty() && !cfg.topMenu) {
+            btnWifi.setVisibility(View.GONE);
+            btnWakePc.setVisibility(View.VISIBLE);
+            btnWakePc.setOnClickListener(v -> confirmWakePc());
+            // The Wi-Fi pill makes way for the PC, so its network name moves to a line above the pills, with
+            // whether the PC's input has a picture beside it.
+            topStatus = findViewById(R.id.topStatus);
+            statusNet = findViewById(R.id.statusNet);
+            statusPc = findViewById(R.id.statusPc);
+            topStatus.setVisibility(View.VISIBLE);
+            pcStatusWanted = !wakePcInput.isEmpty();
+        }
         showInputsPill = cfg.showInputsPill;
         showInputsMenuRow = cfg.showInputsPill;
         btnLibraryTop = findViewById(R.id.btnLibraryTop);
@@ -883,6 +928,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (iconOnlyButtons) {
             if (cfg.wifiLabelWidth > 0) btnWifi.setMaxWidth(Math.round(cfg.wifiLabelWidth * density));
             else makeIconOnly(btnWifi);
+            makeIconOnly(btnWakePc);
             makeIconOnly((TextView) btnSettings);
         }
         if (cfg.iconOnlyInputs) makeIconOnly((TextView) btnInputs);
@@ -908,7 +954,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
                 return true;
             }
-            int firstButton = btnInputs.getVisibility() == View.VISIBLE ? R.id.btnInputs : firstTopButton().getId();
+            // The PC pill (wake_pc_mac) sits before Inputs, and firstTopButton finds it first.
+            int firstButton = btnInputs.getVisibility() == View.VISIBLE && btnWakePc.getVisibility() != View.VISIBLE
+                    ? R.id.btnInputs : firstTopButton().getId();
             int leftButton = rtlMenuBar ? R.id.btnSettings : firstButton;
             int rightButton = rtlMenuBar ? firstButton : R.id.btnSettings;
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) return v.getId() == leftButton;
@@ -916,13 +964,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         };
         btnInputs.setOnKeyListener(pillKeys);
         btnWifi.setOnKeyListener(pillKeys);
+        btnWakePc.setOnKeyListener(pillKeys);
         btnVpn.setOnKeyListener(pillKeys);
         btnSettings.setOnKeyListener(pillKeys);
         btnReorder.setOnKeyListener(pillKeys);
         btnLibraryTop.setOnKeyListener(pillKeys);
         for (View button : topAppButtons) button.setOnKeyListener(pillKeys);
         if (advancedEffects) {
-            List<View> pills = new ArrayList<>(Arrays.asList(btnInputs, btnWifi, btnVpn, btnReorder, btnLibraryTop, btnSettings));
+            List<View> pills = new ArrayList<>(Arrays.asList(btnInputs, btnWifi, btnWakePc, btnVpn, btnReorder, btnLibraryTop, btnSettings));
             pills.addAll(topAppButtons);
             for (View button : pills) {
                 button.setOnFocusChangeListener((view, focused) -> view.animate()
@@ -1090,6 +1139,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        if (continueRow != null) continueRow.refresh(this::onContinueRowChanged);
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -1133,6 +1183,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else {
             updateWifiLabel();
             updateInputsButton();
+            updatePcStatus();
             pillsShown = true;
         }
         if (showStats) startStats();
@@ -1379,6 +1430,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (continueRow != null) continueRow.destroy();
         RemoteKeys.release(this);
         cancelHoldOk();
         if (gameDay != null) gameDay.shutdown();
@@ -2462,6 +2514,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return GridNavigation.atHorizontalEdge(position, rowCount, COLUMNS,
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
+        // continue_watching: the row sits between the dock and the first grid row.
+        if (continueRow != null && continueRow.hasItems()) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && position < COLUMNS) {
+                continueColumn = position;
+                focusContinueRow();
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP && position >= COLUMNS && position < 2 * COLUMNS) {
+                continueColumn = position - COLUMNS;
+                focusContinueRow();
+                return true;
+            }
+        }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
             target = position - COLUMNS;
@@ -2478,6 +2543,97 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.playSoundEffect(keyCode == KeyEvent.KEYCODE_DPAD_UP
                 ? SoundEffectConstants.NAVIGATION_UP : SoundEffectConstants.NAVIGATION_DOWN);
         return true;
+    }
+
+    // ---- continue watching ----------------------------------------------------------------------
+
+    /** Adds the Continue watching row in a gap under the dock row and keeps it there while the grid scrolls. */
+    private void setUpContinueRow() {
+        continueRow = new ContinueRow(this, new ContinueRow.Host() {
+            @Override public void onRowUp() {
+                focusTile(Math.min(continueColumn, Math.max(0, adapter.dockFilled() - 1)));
+                grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
+            }
+
+            @Override public void onRowDown() {
+                int count = adapter.appCount();
+                if (count > COLUMNS) focusTile(Math.min(COLUMNS + continueColumn, count - 1));
+                else if (adapter.isLibraryAt(count)) focusLibrary();
+                else return;
+                grid.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
+            }
+
+            @Override public void onRowFocused() {
+                hideGlass();
+                hideHero();
+                revealContinueRow();
+            }
+        }, density);
+        ViewGroup wrapper = (ViewGroup) grid.getParent();
+        wrapper.addView(continueRow.view(), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                continueRow.heightPx(), Gravity.TOP));
+        grid.addItemDecoration(continueRow.gapDecoration(COLUMNS));
+        grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                placeContinueRow();
+            }
+        });
+        grid.getViewTreeObserver().addOnGlobalLayoutListener(this::placeContinueRow);
+    }
+
+    /** The row appeared, went, or changed: make room for it (or close the gap) and put it in place. */
+    private void onContinueRowChanged(boolean appearedOrWent) {
+        if (appearedOrWent) {
+            grid.invalidateItemDecorations();
+            if (!continueRow.hasItems() && continueRow.hasFocus()) focusTile(lastFocused);
+        }
+        grid.post(this::placeContinueRow);
+    }
+
+    /** Puts the row in the gap below the dock: under the dock's tiles, or above the first grid row once it scrolls. */
+    private void placeContinueRow() {
+        if (continueRow == null) return;
+        View row = continueRow.view();
+        RecyclerView.LayoutManager lm = grid.getLayoutManager();
+        if (lm == null) return;
+        View dock = null, below = null;
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            View child = grid.getChildAt(i);
+            int p = grid.getChildAdapterPosition(child);
+            if (p == 0 || (dock == null && p > 0 && p < COLUMNS)) dock = child;
+            else if (below == null && p >= COLUMNS && p < 2 * COLUMNS) below = child;
+        }
+        float y;
+        if (dock != null) y = lm.getDecoratedBottom(dock) - continueRow.heightPx();
+        else if (below != null) y = lm.getDecoratedTop(below) - continueRow.heightPx();
+        else y = -10 * continueRow.heightPx();     // scrolled far away: off screen
+        row.setTranslationY(grid.getTop() + y);
+        if (dock != null) {
+            View card = dock.findViewById(R.id.card);
+            int start = grid.getLeft() + dock.getLeft() + (card != null ? card.getLeft() : 0);
+            if (grid.getChildAdapterPosition(dock) == 0) continueRow.setStart(start);
+        }
+    }
+
+    private void focusContinueRow() {
+        cancelPendingFocusScroll();
+        placeContinueRow();
+        continueRow.focus();
+    }
+
+    /** Scrolls the grid so the whole row is on screen. */
+    private void revealContinueRow() {
+        View row = continueRow.view();
+        View wrapper = (View) grid.getParent();
+        float top = row.getTranslationY();
+        float bottom = top + continueRow.heightPx();
+        int margin = (int) (8 * density);
+        int dy = 0;
+        if (bottom > wrapper.getHeight() - margin) dy = (int) (bottom - (wrapper.getHeight() - margin));
+        else if (top < margin) dy = (int) (top - margin);
+        if (dy == 0) return;
+        if (animations && !reducedMotion) grid.smoothScrollBy(0, dy);
+        else grid.scrollBy(0, dy);
     }
 
     @Override public void onLibraryFocused() {
@@ -2923,11 +3079,92 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (isDestroyed()) return;
                     updateWifiLabel();
                     updateInputsButton();
+                    updatePcStatus();
                 });
                 return true;
             }
         });
         root.invalidate();   // a resume that changes nothing on screen still draws once, so the refresh runs
+    }
+
+    /** The PC pill: asks first, then sends the magic packet off the main thread and opens the PC's input. */
+    private void confirmWakePc() {
+        String input = wakePcInput;
+        CharSequence inputName = input.isEmpty() ? null : WakeOnLan.inputLabel(this, input);
+        updatePcStatus();
+        // On (its input has a picture): the dialog offers the switch. Off, or no input: it offers to turn it on.
+        boolean on = inputName != null && pcOn;
+        new AlertDialog.Builder(this)
+                .setTitle(on ? R.string.wake_pc_confirm_title_input : R.string.wake_pc_confirm_title)
+                .setMessage(inputName == null ? getString(R.string.wake_pc_confirm)
+                        : getString(on ? R.string.wake_pc_confirm_on : R.string.wake_pc_confirm_input, inputName))
+                .setPositiveButton(on ? R.string.wake_pc_switch : R.string.wake_pc_send, (d, w) -> {
+                    // Sent either way: a PC that is already on ignores it. With an input, the switch itself shows
+                    // it worked, so only a failure gets a toast.
+                    sendWakePc(inputName == null);
+                    // The PC takes a few seconds to wake; its picture comes up on the input when it does.
+                    if (inputName != null) openInput(input);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** The network line above the pills: the same name and icon the Wi-Fi pill would show, dimmed while offline. */
+    private void setStatusNet(String text, int icon, boolean online) {
+        Drawable d = getDrawable(icon);
+        if (d != null) {
+            d = d.mutate();
+            int size = Math.round(16 * density);
+            d.setBounds(0, 0, size, size);
+            d.setTint(online ? 0xD9FFFFFF : 0x80FFFFFF);
+        }
+        statusNet.setCompoundDrawablesRelative(d, null, null, null);
+        if (!TextUtils.equals(statusNet.getText(), text)) statusNet.setText(text);
+    }
+
+    /**
+     * PC on or off from its input (wake_pc_input): on while the TV reports a picture there. A PC that sends no
+     * picture to the TV (the TV is not one of its displays) shows as off. Not shown on a TV whose HDMI states are
+     * wrong (inputs_cec_state_only, or every port connected, as on Sony).
+     */
+    private void updatePcStatus() {
+        if (statusPc == null || !pcStatusWanted) return;
+        boolean known = false, on = false;
+        try {
+            TvInputManager tim = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
+            if (tim != null && !inputsCecStateOnly) {
+                int ports = 0, connected = 0;
+                for (TvInputInfo info : tim.getTvInputList()) {
+                    if (!info.isPassthroughInput() || info.getType() != TvInputInfo.TYPE_HDMI || info.getParentId() != null) continue;
+                    ports++;
+                    if (tim.getInputState(info.getId()) == TvInputManager.INPUT_STATE_CONNECTED) connected++;
+                }
+                known = !(ports > 1 && connected == ports);
+                on = known && tim.getInputState(wakePcInput) == TvInputManager.INPUT_STATE_CONNECTED;
+            }
+        } catch (RuntimeException ignored) {
+        }
+        pcOn = on;
+        statusPc.setVisibility(known ? View.VISIBLE : View.GONE);
+        if (!known) return;
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(on ? 0xFF34C759 : 0x80FFFFFF);
+        int size = Math.round(9 * density);
+        dot.setBounds(0, 0, size, size);
+        statusPc.setCompoundDrawablesRelative(dot, null, null, null);
+        statusPc.setText(on ? R.string.pc_status_on : R.string.pc_status_off);
+    }
+
+    /** Sends the wake signal off the main thread; with toast, says that it went out. A failure always says so. */
+    private void sendWakePc(boolean toast) {
+        Context app = getApplicationContext();
+        String mac = wakePcMac;
+        new Thread(() -> {
+            boolean sent = WakeOnLan.send(app, mac);
+            if (toast || !sent) runOnUiThread(() -> Toast.makeText(app,
+                    sent ? R.string.wake_pc_sent : R.string.wake_pc_failed, Toast.LENGTH_SHORT).show());
+        }, "wake-pc").start();
     }
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
@@ -2978,6 +3215,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         } catch (Exception ignored) {
         }
+        if (statusNet != null) setStatusNet(text, icon, online);
         // With a VPN app configured, a VPN that is down matters too: show a red "VPN off" capsule then.
         boolean vpnDown = !vpn && online && !vpnApp.isEmpty();
         if (vpnPill) updateVpnPill(vpn);
@@ -3038,6 +3276,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** show_inputs_pill as configured: top_menu clears showInputsPill, so its Inputs row reads this. */
     private boolean showInputsMenuRow = true;
     private boolean launcherSettingsButton;
+    private boolean settingsMenu;
     /** icon_only_buttons without wifi_label_width: the Wi-Fi pill shows no network name. */
     private boolean wifiIconOnly;
     /** config.xml wifi_status_color: the Wi-Fi icon's green while online and its usual pill colours; null while off. */
@@ -3715,8 +3954,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (200 * density));
-        if (!launcherSettingsButton) addSettingsMenuRow(rows, popup, R.string.launcher_settings, () -> startActivityForResult(
-                new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
+        if (!launcherSettingsButton || settingsMenu) addSettingsMenuRow(rows, popup, R.string.launcher_settings,
+                () -> startActivityForResult(new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
+        // settings_menu: a click opens this menu, so the TV's own settings need a row of their own.
+        if (settingsMenu) addSettingsMenuRow(rows, popup, R.string.tv_settings, () -> open(systemIntent(Settings.ACTION_SETTINGS)));
         // Firmware that ships its own settings app next to the AOSP one (Xiaomi China is one): the
         // vendor app holds pages the AOSP settings has no row for, such as Account & Security with
         // the ADB switch. Offered here only while one of them is installed.

@@ -71,3 +71,7 @@ rule sit on its wanted list until a screenshot arrives.
 | `clock_format` | <img src="switches/clock_format.jpg" width="320" alt="clock_format on a TV"> |
 | `glow_snap` | <img src="switches/glow_snap.jpg" width="320" alt="glow_snap on a TV: the glow in Netflix red behind the dock"> |
 | `settings_key_clear_task` | <img src="switches/settings_key_clear_task.jpg" width="320" alt="settings_key_clear_task on a TV: the TV Settings screen the gear opens"> |
+| `continue_watching` | <img src="switches/continue_watching.jpg" width="320" alt="continue_watching on a TV: the Continue Watching row of posters below the dock"> |
+| `wake_pc_mac` | <img src="switches/wake_pc_mac.jpg" width="320" alt="wake_pc_mac on a TV: the PC pill first in the top bar, asking before it turns the PC on"> |
+| `wake_pc_input` | <img src="switches/wake_pc_input.jpg" width="320" alt="wake_pc_input on a TV: choosing the input the PC is on in Launcher settings"> |
+| `settings_menu` | <img src="switches/settings_menu.jpg" width="320" alt="settings_menu on a TV: the Settings pill's drop-down with Launcher settings and TV system settings first"> |

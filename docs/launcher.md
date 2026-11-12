@@ -34,7 +34,8 @@ Themes set the same keys plus a background colour and a wallpaper.
 
 ## Launcher settings and the default home
 
-Click **Settings** for the TV's own settings. Hold OK on it for its menu:
+Click **Settings** for the TV's own settings. Hold OK on it for its menu (with `settings_menu`, a click opens the
+menu too, with **TV system settings** under Launcher settings):
 
 - **Launcher settings**. With `launcher_settings_button` a click opens those instead, and the menu
   leaves the row out.
@@ -63,6 +64,9 @@ The launcher's own page has these rows, top to bottom:
   transitions; they may use more memory) once animations are on.
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first
   time Home comes up after the TV starts. Once per boot, so Home and Back still reach the launcher.
+- **PC (Wake-on-LAN)**: the MAC address of a PC to wake (`wake_pc_mac`); a saved one puts a PC pill first in
+  the top bar. **PC input**, once a MAC is saved: the HDMI or AV input to switch to after the wake signal, or
+  Don't switch (`wake_pc_input`).
 - **Follow theme (reset on-TV choices)**, which clears every choice above. Pushing or resetting a theme
   clears them too.
 - **Choose default home** opens Android's home picker, and **TV system settings** the TV's own settings

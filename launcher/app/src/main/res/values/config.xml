@@ -193,6 +193,22 @@
          2K NSTV, Google TV 14). Also "settings_key_clear_task" in a theme's config.json. -->
     <bool name="settings_key_clear_task">false</bool>
 
+
+    <!-- A Continue watching row below the dock: what other apps publish as Watch Next (Prime Video and others) and in
+         a preview channel named Continue watching (Stremio), with posters and a progress bar. OK resumes the item in
+         its app. Needs READ_TV_LISTINGS, which build-and-install.sh grants; posters are downloaded from the addresses
+         the apps publish and cached on the TV. Down from the dock reaches it. Also "continue_watching" in a theme's
+         config.json. -->
+    <bool name="continue_watching">false</bool>
+
+    <!-- A PC pill at the start of the top bar, before Inputs (the Wi-Fi pill is hidden): OK asks first, then sends a
+         Wake-on-LAN magic packet to this MAC as a broadcast on the TV's own subnet (UDP port 9), and opens
+         wake_pc_input. Empty: no pill. The PC must allow wake by magic packet. Set on the TV in Launcher settings,
+         which wins over this, or "wake_pc_mac" in a theme's config.json. -->
+    <string name="wake_pc_mac" translatable="false"></string>
+    <!-- The TV input the PC is on (an input id from dumpsys tv_input), opened after the wake packet. Empty: stay on
+         Home. Set on the TV in Launcher settings, which also takes the MAC address. Also "wake_pc_input" in a theme. -->
+    <string name="wake_pc_input" translatable="false"></string>
     <!-- A force stop of the launcher (Settings, a cleaner app, am force-stop) takes HomeKeyService and InputKeyService
          off the enabled list. true: Home puts the helpers that were running back when it starts; one turned off in
          Settings stays off. Needs WRITE_SECURE_SETTINGS, which build-and-install grants with RESTORE_KEY_SERVICES=1
@@ -314,6 +330,9 @@
     <!-- A direct Launcher settings action instead of TV Settings in the header (or top_menu).
          Off by default; a theme can set "launcher_settings_button": true. -->
     <bool name="launcher_settings_button">false</bool>
+    <!-- A click on Settings drops a menu: Launcher settings and TV system settings first, then the hold-OK
+         actions. Off by default; a theme can set "settings_menu": true. This fork only. -->
+    <bool name="settings_menu">false</bool>
     <!-- The dock band as light frosted glass, like the Inputs, Wi-Fi and Settings pills, so a sky or wallpaper shows
          through it. false (the default) keeps the solid near-black band, or the cinematic shelf's dark glass. Can
          also be set with "dock_glass": true in a theme's config.json. -->

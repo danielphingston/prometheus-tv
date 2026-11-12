@@ -9,7 +9,11 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.media.tv.TvInputInfo;
+import android.media.tv.TvInputManager;
+import android.text.InputType;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -39,6 +43,10 @@ public final class LauncherSettingsActivity extends Activity {
     private TextView advancedChoice;
     private TextView followThemeChoice;
     private TextView openOnStartChoice;
+    private TextView wakePcChoice;
+    private TextView wakePcInputChoice;
+    private String wakePcMac;
+    private String wakePcInput;
     private int columns;
     private int rowsBelowDock;
     private int dockOpacity;
@@ -152,6 +160,12 @@ public final class LauncherSettingsActivity extends Activity {
             openOnStartChoice.setVisibility(View.VISIBLE);
             openOnStartChoice.setOnClickListener(v -> showOpenOnStartPicker());
         }
+        wakePcMac = config.wakePcMac;
+        wakePcInput = config.wakePcInput;
+        wakePcChoice = findViewById(R.id.wakePcChoice);
+        wakePcChoice.setOnClickListener(v -> showWakePcMacDialog());
+        wakePcInputChoice = findViewById(R.id.wakePcInputChoice);
+        wakePcInputChoice.setOnClickListener(v -> showWakePcInputPicker());
         followThemeChoice = findViewById(R.id.followThemeChoice);
         followThemeChoice.setOnClickListener(v -> {
             if (!hasOnTvChoices()) return;
@@ -255,6 +269,83 @@ public final class LauncherSettingsActivity extends Activity {
                 .show();
     }
 
+    /** The PC's MAC address for the PC pill. Saving one shows the pill; Remove hides it. */
+    private void showWakePcMacDialog() {
+        EditText field = new EditText(this);
+        field.setSingleLine(true);
+        field.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        field.setHint(R.string.wake_pc_mac_hint);
+        if (!wakePcMac.isEmpty()) field.setText(WakeOnLan.pretty(wakePcMac));
+        int pad = Math.round(24 * getResources().getDisplayMetrics().density);
+        LinearLayout box = new LinearLayout(this);
+        box.setPaddingRelative(pad, 0, pad, 0);
+        box.addView(field, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.wake_pc_mac_title)
+                .setMessage(R.string.wake_pc_mac_help)
+                .setView(box)
+                .setPositiveButton(R.string.wake_pc_save, (d, w) -> {
+                    String mac = WakeOnLan.normalize(field.getText().toString());
+                    if (mac.isEmpty()) {
+                        Toast.makeText(this, R.string.wake_pc_mac_invalid, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    wakePcMac = mac;
+                    choices.edit().putString(Config.WAKE_PC_MAC_KEY, mac).apply();
+                    changed();
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null);
+        if (!wakePcMac.isEmpty()) {
+            dialog.setNeutralButton(R.string.wake_pc_remove, (d, w) -> {
+                wakePcMac = "";
+                // An empty choice, not a removed one: it also wins over a MAC in config.xml or the theme.
+                choices.edit().putString(Config.WAKE_PC_MAC_KEY, "").apply();
+                changed();
+                refresh();
+            });
+        }
+        dialog.show();
+    }
+
+    /** Don't switch, then the TV's inputs (HDMI first) by the name the TV shows. */
+    private void showWakePcInputPicker() {
+        List<String[]> inputs = new ArrayList<>();
+        TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
+        if (tim != null) {
+            List<TvInputInfo> all = new ArrayList<>(tim.getTvInputList());
+            Collections.sort(all, (a, b) -> {
+                boolean ha = a.getType() == TvInputInfo.TYPE_HDMI, hb = b.getType() == TvInputInfo.TYPE_HDMI;
+                return ha != hb ? (ha ? -1 : 1) : a.getId().compareTo(b.getId());
+            });
+            for (TvInputInfo info : all) {
+                if (!info.isPassthroughInput() || info.isHidden(this)) continue;
+                CharSequence label = WakeOnLan.inputLabel(this, info.getId());
+                inputs.add(new String[]{String.valueOf(label != null ? label : info.getId()), info.getId()});
+            }
+        }
+        String[] labels = new String[inputs.size() + 1];
+        labels[0] = getString(R.string.wake_pc_input_none);
+        int checked = 0;
+        for (int i = 0; i < inputs.size(); i++) {
+            labels[i + 1] = inputs.get(i)[0];
+            if (inputs.get(i)[1].equals(wakePcInput)) checked = i + 1;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.wake_pc_input_title)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    dialog.dismiss();
+                    wakePcInput = which == 0 ? "" : inputs.get(which - 1)[1];
+                    choices.edit().putString(Config.WAKE_PC_INPUT_KEY, wakePcInput).apply();
+                    changed();
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     /** The picked app's name, its package when it is gone, or Off. */
     private String openOnStartLabel() {
         String pkg = choices.getString(OpenOnStart.KEY, "");
@@ -318,6 +409,14 @@ public final class LauncherSettingsActivity extends Activity {
                         : getString(R.string.wallpaper_theme_default)));
         openOnStartChoice.setText(getString(R.string.open_on_start_state, openOnStartLabel()));
         followThemeChoice.setSelected(!hasOnTvChoices());
+        wakePcChoice.setText(getString(R.string.wake_pc_state,
+                wakePcMac.isEmpty() ? getString(R.string.off) : WakeOnLan.pretty(wakePcMac)));
+        CharSequence inputName = wakePcInput.isEmpty() ? null : WakeOnLan.inputLabel(this, wakePcInput);
+        wakePcInputChoice.setText(getString(R.string.wake_pc_input_state,
+                wakePcInput.isEmpty() ? getString(R.string.wake_pc_input_none)
+                        : inputName != null ? inputName : wakePcInput));
+        // The input only matters once there is a PC to wake.
+        wakePcInputChoice.setVisibility(wakePcMac.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     private boolean hasOnTvChoices() {
