@@ -12,9 +12,13 @@ Everything else (the debloat lists, the tools, the safety rules in `PROMPT.md`) 
   - **Preview channels** named "Continue watching" or "Keep watching". Stremio publishes one.
 - Shows each item as a poster card with:
   - an episode badge, such as `S1 E1`
+  - the icon of the app that OK opens
   - a progress bar
   - the title underneath
-- Hides finished items (95% watched or more) and repeats. It shows at most 20 items.
+- Sorts every app's items together, most recently watched first. Watch Next rows carry their own time. A preview
+  channel has none, so its items take the time Home last opened that app, in the channel's own order.
+- Shows at most 5 items per app and 20 in all. It hides finished items (95% watched or more) and repeats, and skips
+  Watch Next watchlist entries, which were never started.
 - Pressing OK resumes the item in its own app. The launcher only opens a link inside the app that published it, and
   falls back to opening that app.
 - Down from the dock goes to the row, and Down again goes to the app grid. Up goes back the same way. The row hides
@@ -55,7 +59,7 @@ The APK is a few KB over upstream's 576 KB size gate, so upstream CI's size chec
 
 ## Tested on
 
-Vu Masterprice TV, Google TV 12, firmware STT2.230310.002, with Stremio 1.12.1 and Prime Video.
+Vu Masterprice TV, Google TV 12, firmware STT2.230310.002, with Stremio 1.12.1, Prime Video and JioHotstar.
 
 ## New files
 

@@ -32,6 +32,8 @@ final class ContinueWatching {
     static final String PERMISSION = "android.permission.READ_TV_LISTINGS";
     /** At most this many cards. */
     static final int MAX_ITEMS = 20;
+    /** At most this many items from one app, so one app's history cannot fill the row. */
+    static final int MAX_PER_APP = 5;
     /** Watch Next rows untouched for longer than this are left out: apps leave old rows behind for months. */
     static final long MAX_AGE_MS = 120L * 24 * 60 * 60 * 1000;
     /** Played this far through, an item counts as finished. */
@@ -45,6 +47,9 @@ final class ContinueWatching {
         String intentUri;
         long position;
         long duration;
+        /** When it was last watched, for the sort: Watch Next's engagement time, or for a preview channel (which has
+         *  none) when Home last opened its app, minus a minute per place so the channel's own order holds. */
+        long when;
 
         /** 0..1 progress, or -1 when the app published none. */
         float progress() {
@@ -72,22 +77,24 @@ final class ContinueWatching {
         return context.checkSelfPermission(PERMISSION) == PackageManager.PERMISSION_GRANTED;
     }
 
-    /** Continue watching preview programs first, in their channel's order, then Watch Next rows, newest first. */
+    /** Every app's items together, most recently watched first, at most MAX_PER_APP from each app. */
     static List<Item> read(Context context) {
         List<Item> out = new ArrayList<>();
         if (!allowed(context)) return out;
         ContentResolver resolver = context.getContentResolver();
-        List<Item> preview = readPreview(resolver, continueChannels(resolver));
-        List<Item> watchNext = readWatchNext(resolver, System.currentTimeMillis());
+        List<Item> all = new ArrayList<>(readPreview(context, resolver, continueChannels(resolver)));
+        all.addAll(readWatchNext(resolver, System.currentTimeMillis()));
+        all.sort((a, b) -> Long.compare(b.when, a.when));   // stable: equal times keep the order read
         Set<String> seen = new HashSet<>();
-        for (List<Item> list : List.of(preview, watchNext)) {
-            for (Item i : list) {
-                if (out.size() >= MAX_ITEMS) return out;
-                if (i.title == null || i.title.isEmpty() || i.intentUri == null) continue;
-                if (i.progress() >= FINISHED) continue;
-                if (!seen.add(i.pkg + "\n" + i.title.toLowerCase(Locale.ROOT))) continue;
-                out.add(i);
-            }
+        Map<String, Integer> perApp = new HashMap<>();
+        for (Item i : all) {
+            if (out.size() >= MAX_ITEMS) break;
+            if (i.title == null || i.title.isEmpty() || i.intentUri == null) continue;
+            if (i.progress() >= FINISHED) continue;
+            if (perApp.getOrDefault(i.pkg, 0) >= MAX_PER_APP) continue;
+            if (!seen.add(i.pkg + "\n" + i.title.toLowerCase(Locale.ROOT))) continue;
+            perApp.merge(i.pkg, 1, Integer::sum);
+            out.add(i);
         }
         return out;
     }
@@ -113,7 +120,7 @@ final class ContinueWatching {
         return n.contains("continue watching") || n.contains("keep watching");
     }
 
-    private static List<Item> readPreview(ContentResolver resolver, Map<Long, String> channels) {
+    private static List<Item> readPreview(Context context, ContentResolver resolver, Map<Long, String> channels) {
         List<Item> items = new ArrayList<>();
         if (channels.isEmpty()) return items;
         String[] projection = {TvContract.PreviewPrograms.COLUMN_CHANNEL_ID, "package_name",
@@ -123,12 +130,16 @@ final class ContinueWatching {
                 TvContract.PreviewPrograms.COLUMN_POSTER_ART_URI, TvContract.PreviewPrograms.COLUMN_INTENT_URI,
                 TvContract.PreviewPrograms.COLUMN_LAST_PLAYBACK_POSITION_MILLIS,
                 TvContract.PreviewPrograms.COLUMN_DURATION_MILLIS};
+        Map<String, Integer> place = new HashMap<>();
         try (Cursor c = resolver.query(TvContract.PreviewPrograms.CONTENT_URI, projection, null, null, null)) {
             while (c != null && c.moveToNext()) {
                 long channel = c.getLong(0);
                 if (!channels.containsKey(channel)) continue;
                 Item i = new Item();
                 i.pkg = c.getString(1) != null ? c.getString(1) : channels.get(channel);
+                int n = place.merge(i.pkg, 1, Integer::sum) - 1;
+                long opened = LastOpened.get(context, i.pkg);
+                i.when = opened > 0 ? opened - n * 60_000L : -n;
                 i.title = c.getString(2);
                 i.subtitle = episode(c.getString(4), c.getString(5), c.getString(3));
                 i.posterUri = c.getString(6);
@@ -154,11 +165,14 @@ final class ContinueWatching {
                 TvContract.WatchNextPrograms.COLUMN_INTENT_URI,
                 TvContract.WatchNextPrograms.COLUMN_LAST_PLAYBACK_POSITION_MILLIS,
                 TvContract.WatchNextPrograms.COLUMN_DURATION_MILLIS,
-                TvContract.WatchNextPrograms.COLUMN_LAST_ENGAGEMENT_TIME_UTC_MILLIS};
+                TvContract.WatchNextPrograms.COLUMN_LAST_ENGAGEMENT_TIME_UTC_MILLIS,
+                TvContract.WatchNextPrograms.COLUMN_WATCH_NEXT_TYPE};
         try (Cursor c = resolver.query(TvContract.WatchNextPrograms.CONTENT_URI, projection, null, null, null)) {
             while (c != null && c.moveToNext()) {
                 long when = c.getLong(9);
                 if (when > 0 && now - when > MAX_AGE_MS) continue;
+                // A watchlist entry was never started: it is not something to continue.
+                if (!c.isNull(10) && c.getInt(10) == TvContract.WatchNextPrograms.WATCH_NEXT_TYPE_WATCHLIST) continue;
                 Item i = new Item();
                 i.pkg = c.getString(0);
                 i.title = c.getString(1);
@@ -167,6 +181,7 @@ final class ContinueWatching {
                 i.intentUri = c.getString(6);
                 i.position = c.getLong(7);
                 i.duration = c.getLong(8);
+                i.when = when;
                 // Newest first: insert before the first older row.
                 int at = 0;
                 while (at < engaged.size() && engaged.get(at) >= when) at++;

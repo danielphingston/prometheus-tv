@@ -8,8 +8,12 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Path;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.Outline;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.util.Log;
@@ -30,7 +34,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -48,6 +54,7 @@ final class ContinueRow {
     }
 
     private static final int CARD_W_DP = 80, CARD_H_DP = 120, GAP_DP = 18;
+    private static final int ICON_DP = 24;
     private static final int HEADER_DP = 22, PAD_TOP_DP = 8, TEXT_DP = 28, PAD_BOTTOM_DP = 4;
     private static final float FOCUS_SCALE = 1.1f;
 
@@ -61,6 +68,8 @@ final class ContinueRow {
     private final RecyclerView list;
     private final CardAdapter adapter = new CardAdapter();
     private List<ContinueWatching.Item> items = new ArrayList<>();
+    /** Each app's icon, shown on its cards so you can see which app OK opens. */
+    private Map<String, Drawable> icons = new HashMap<>();
     private int focusedIndex;
     private boolean reading;
 
@@ -125,11 +134,22 @@ final class ContinueRow {
         Context app = activity.getApplicationContext();
         reader.execute(() -> {
             List<ContinueWatching.Item> fresh = ContinueWatching.read(app);
+            Map<String, Drawable> freshIcons = new HashMap<>();
+            PackageManager pm = app.getPackageManager();
+            for (ContinueWatching.Item i : fresh) {
+                if (i.pkg == null || freshIcons.containsKey(i.pkg)) continue;
+                try {
+                    freshIcons.put(i.pkg, squircle(pm.getApplicationIcon(i.pkg), dp(ICON_DP) * 2));
+                } catch (PackageManager.NameNotFoundException | RuntimeException e) {
+                    freshIcons.put(i.pkg, null);
+                }
+            }
             activity.runOnUiThread(() -> {
                 reading = false;
                 if (activity.isDestroyed() || fresh.equals(items)) return;
                 boolean was = !items.isEmpty();
                 items = fresh;
+                icons = freshIcons;
                 focusedIndex = Math.min(focusedIndex, Math.max(0, items.size() - 1));
                 adapter.notifyDataSetChanged();
                 root.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
@@ -151,6 +171,40 @@ final class ContinueRow {
             if (h != null) ((CardHolder) h).card.requestFocus();
         });
         return true;
+    }
+
+    /** The icon drawn into a superellipse (|x|^4 + |y|^4 = 1), the squircle shape, size px square. */
+    private Drawable squircle(Drawable icon, int px) {
+        Bitmap out = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(out);
+        Path shape = new Path();
+        float r = px / 2f;
+        for (int a = 0; a <= 360; a += 4) {
+            double t = Math.toRadians(a), c = Math.cos(t), s = Math.sin(t);
+            float x = r + (float) (r * Math.signum(c) * Math.sqrt(Math.abs(c)));
+            float y = r + (float) (r * Math.signum(s) * Math.sqrt(Math.abs(s)));
+            if (a == 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+        }
+        shape.close();
+        canvas.clipPath(shape);
+        icon.setBounds(0, 0, px, px);
+        icon.draw(canvas);
+        return new BitmapDrawable(activity.getResources(), out);
+    }
+
+    /** Focuses card index, scrolling it in first when it is not laid out yet; outside the row it does nothing. */
+    private void moveTo(int index) {
+        if (index < 0 || index >= items.size()) return;
+        RecyclerView.ViewHolder vh = list.findViewHolderForAdapterPosition(index);
+        if (vh != null) {
+            ((CardHolder) vh).card.requestFocus();
+            return;
+        }
+        list.scrollToPosition(index);
+        list.post(() -> {
+            RecyclerView.ViewHolder h = list.findViewHolderForAdapterPosition(index);
+            if (h != null) ((CardHolder) h).card.requestFocus();
+        });
     }
 
     void destroy() {
@@ -196,6 +250,7 @@ final class ContinueRow {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try {
                 activity.startActivity(intent);
+                LastOpened.record(activity, item.pkg);
                 return;
             } catch (ActivityNotFoundException | SecurityException e) {
                 Log.w(ContinueWatching.TAG, "open " + item.intentUri + ": " + e);
@@ -209,6 +264,7 @@ final class ContinueRow {
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             activity.startActivity(launch);
+            LastOpened.record(activity, item.pkg);
         } catch (ActivityNotFoundException | SecurityException e) {
             Log.w(ContinueWatching.TAG, "launch " + item.pkg + ": " + e);
         }
@@ -216,7 +272,7 @@ final class ContinueRow {
 
     private final class CardHolder extends RecyclerView.ViewHolder {
         final FrameLayout card;
-        final ImageView poster;
+        final ImageView poster, appIcon;
         final TextView fallback, title, subtitle;
         final View track, fill;
         String posterUri;
@@ -291,6 +347,14 @@ final class ContinueRow {
             sl.setMargins(dp(6), dp(6), dp(6), 0);
             card.addView(subtitle, sl);
 
+            // The app OK opens, as its icon in the top corner.
+            appIcon = new ImageView(activity);
+            appIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            appIcon.setElevation(dp(2));
+            FrameLayout.LayoutParams il = new FrameLayout.LayoutParams(dp(ICON_DP), dp(ICON_DP), Gravity.TOP | Gravity.END);
+            il.setMargins(0, dp(6), dp(6), 0);
+            card.addView(appIcon, il);
+
             item.addView(card, new LinearLayout.LayoutParams(dp(CARD_W_DP), dp(CARD_H_DP)));
 
             title = new TextView(activity);
@@ -332,9 +396,15 @@ final class ContinueRow {
                         if (down) host.onRowDown();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        return p == 0;                    // the row's start: stay
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        return p == items.size() - 1;     // the row's end: stay
+                        // Moved here rather than by focus search: a held key outruns the list's layout, and with
+                        // the next card not attached yet the search left the row (Up into the dock).
+                        if (down && p != RecyclerView.NO_POSITION) {
+                            boolean rtl = list.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+                            boolean forward = (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) != rtl;
+                            moveTo(p + (forward ? 1 : -1));
+                        }
+                        return true;
                     default:
                         return false;
                 }
@@ -346,6 +416,9 @@ final class ContinueRow {
             title.setAlpha(card.isFocused() ? 1f : 0.7f);
             subtitle.setText(item.subtitle == null ? "" : item.subtitle);
             subtitle.setVisibility(item.subtitle == null ? View.GONE : View.VISIBLE);
+            Drawable icon = icons.get(item.pkg);
+            appIcon.setImageDrawable(icon);
+            appIcon.setVisibility(icon == null ? View.GONE : View.VISIBLE);
             fallback.setText(item.title);
             float progress = item.progress();
             track.setVisibility(progress < 0 ? View.GONE : View.VISIBLE);
