@@ -149,6 +149,8 @@ final class Config {
     final String wakePcMac;
     /** The TV input the PC is on, opened after the wake packet; empty stays on Home (config.xml wake_pc_input). */
     final String wakePcInput;
+    /** A click on Settings drops a menu with Launcher settings and TV settings first (config.xml settings_menu). */
+    final boolean settingsMenu;
     /** App library as a round button in the top bar (config.xml library_button); needs app_library. */
     final boolean libraryButton;
     /** The App library pill after the last Home row; false hides it while libraryButton is on (show_library_pill). */
@@ -306,7 +308,8 @@ final class Config {
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean homeIgnoreChannelKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly, boolean inputsCecStateOnly,
                    int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap,
-                   boolean settingsKeyClearTask, boolean continueWatching, String wakePcMac, String wakePcInput) {
+                   boolean settingsKeyClearTask, boolean continueWatching, String wakePcMac, String wakePcInput,
+                   boolean settingsMenu) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -362,6 +365,7 @@ final class Config {
         this.continueWatching = continueWatching;
         this.wakePcMac = wakePcMac;
         this.wakePcInput = wakePcInput;
+        this.settingsMenu = settingsMenu;
         this.libraryButton = libraryButton;
         this.showLibraryPill = showLibraryPill;
         this.wifiLabelWidth = wifiLabelWidth;
@@ -498,6 +502,7 @@ final class Config {
         boolean continueWatching = res.getBoolean(R.bool.continue_watching);
         String wakePcMac = res.getString(R.string.wake_pc_mac);
         String wakePcInput = res.getString(R.string.wake_pc_input);
+        boolean settingsMenu = res.getBoolean(R.bool.settings_menu);
         boolean libraryButton = res.getBoolean(R.bool.library_button);
         boolean showLibraryPill = res.getBoolean(R.bool.show_library_pill);
         int wifiLabelWidth = res.getInteger(R.integer.wifi_label_width);
@@ -617,6 +622,7 @@ final class Config {
             continueWatching = bool(json, "continue_watching", continueWatching);
             wakePcMac = string(json, "wake_pc_mac", wakePcMac);
             wakePcInput = string(json, "wake_pc_input", wakePcInput);
+            settingsMenu = bool(json, "settings_menu", settingsMenu);
             libraryButton = bool(json, "library_button", libraryButton);
             showLibraryPill = bool(json, "show_library_pill", showLibraryPill);
             wifiLabelWidth = integer(json, "wifi_label_width", wifiLabelWidth, 0, 300);
@@ -747,7 +753,8 @@ final class Config {
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly, inputsCecStateOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
-                settingsKeyClearTask, continueWatching, WakeOnLan.normalize(wakePcMac), wakePcInput);
+                settingsKeyClearTask, continueWatching, WakeOnLan.normalize(wakePcMac), wakePcInput,
+                settingsMenu);
     }
 
     /**

@@ -76,6 +76,12 @@ leaves the home network. 255.255.255.255 is used only when the TV can't tell its
 
 Wired Ethernet is the reliable case. Waking from a full shutdown on Windows often also needs Fast startup off.
 
+## Settings menu
+
+With `settings_menu` on (config.xml or a theme's `"settings_menu": true`), a click on **Settings** drops a menu
+with **Launcher settings** and **TV system settings** first, then what hold OK offers: module cards, edit dock,
+reorder apps and restart. Off by default.
+
 ## How it differs from upstream
 
 Upstream keeps the launcher offline on purpose. This fork adds two permissions:

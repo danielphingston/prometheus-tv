@@ -34,7 +34,8 @@ Themes set the same keys plus a background colour and a wallpaper.
 
 ## Launcher settings and the default home
 
-Click **Settings** for the TV's own settings. Hold OK on it for its menu:
+Click **Settings** for the TV's own settings. Hold OK on it for its menu (with `settings_menu`, a click opens the
+menu too, with **TV system settings** under Launcher settings):
 
 - **Launcher settings**. With `launcher_settings_button` a click opens those instead, and the menu
   leaves the row out.
