@@ -332,6 +332,16 @@
                 android:clipToPadding="false"
                 android:orientation="horizontal">
 
+                <!-- wake_pc_mac: the PC pill, at the start of the bar. -->
+                <TextView
+                    android:id="@+id/btnWakePc"
+                    style="@style/TopButton"
+                    android:visibility="gone"
+                    android:singleLine="true"
+                    android:text="@string/wake_pc"
+                    android:drawableStart="@drawable/ic_wake_pc"
+                    android:nextFocusDown="@+id/grid" />
+
                 <TextView
                     android:id="@+id/btnInputs"
                     style="@style/TopButton"
@@ -347,16 +357,6 @@
                     android:ellipsize="end"
                     android:text="@string/wifi"
                     android:drawableStart="@drawable/ic_wifi"
-                    android:nextFocusDown="@+id/grid" />
-
-                <!-- wake_pc_mac: shown in the network pill's place. -->
-                <TextView
-                    android:id="@+id/btnWakePc"
-                    style="@style/TopButton"
-                    android:visibility="gone"
-                    android:singleLine="true"
-                    android:text="@string/wake_pc"
-                    android:drawableStart="@drawable/ic_wake_pc"
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView

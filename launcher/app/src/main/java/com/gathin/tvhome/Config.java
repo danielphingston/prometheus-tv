@@ -40,6 +40,9 @@ final class Config {
     static final String FILE_NAME = "config.json";
     static final String WALLPAPER_NAME = "wallpaper.jpg";
     static final String SETTINGS_NAME = "launcher_settings";
+    /** Wake PC choices made on the TV (Launcher settings); they win over config.xml and the theme. */
+    static final String WAKE_PC_MAC_KEY = "wake_pc_mac";
+    static final String WAKE_PC_INPUT_KEY = "wake_pc_input";
     static final String ROWS_BELOW_DOCK_KEY = "rows_below_dock";
     static final String WALLPAPER_CHOICE_KEY = "wallpaper_choice";
     static final String DOCK_OPACITY_KEY = "dock_opacity";
@@ -144,6 +147,8 @@ final class Config {
     final boolean continueWatching;
     /** Wake-on-LAN target: 12 hex digits, or empty for no Wake PC pill (config.xml wake_pc_mac). */
     final String wakePcMac;
+    /** The TV input the PC is on, opened after the wake packet; empty stays on Home (config.xml wake_pc_input). */
+    final String wakePcInput;
     /** App library as a round button in the top bar (config.xml library_button); needs app_library. */
     final boolean libraryButton;
     /** The App library pill after the last Home row; false hides it while libraryButton is on (show_library_pill). */
@@ -301,7 +306,7 @@ final class Config {
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean homeIgnoreChannelKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly, boolean inputsCecStateOnly,
                    int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap,
-                   boolean settingsKeyClearTask, boolean continueWatching, String wakePcMac) {
+                   boolean settingsKeyClearTask, boolean continueWatching, String wakePcMac, String wakePcInput) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -356,6 +361,7 @@ final class Config {
         this.settingsKeyClearTask = settingsKeyClearTask;
         this.continueWatching = continueWatching;
         this.wakePcMac = wakePcMac;
+        this.wakePcInput = wakePcInput;
         this.libraryButton = libraryButton;
         this.showLibraryPill = showLibraryPill;
         this.wifiLabelWidth = wifiLabelWidth;
@@ -491,6 +497,7 @@ final class Config {
         boolean settingsKeyClearTask = res.getBoolean(R.bool.settings_key_clear_task);
         boolean continueWatching = res.getBoolean(R.bool.continue_watching);
         String wakePcMac = res.getString(R.string.wake_pc_mac);
+        String wakePcInput = res.getString(R.string.wake_pc_input);
         boolean libraryButton = res.getBoolean(R.bool.library_button);
         boolean showLibraryPill = res.getBoolean(R.bool.show_library_pill);
         int wifiLabelWidth = res.getInteger(R.integer.wifi_label_width);
@@ -609,6 +616,7 @@ final class Config {
             settingsKeyClearTask = bool(json, "settings_key_clear_task", settingsKeyClearTask);
             continueWatching = bool(json, "continue_watching", continueWatching);
             wakePcMac = string(json, "wake_pc_mac", wakePcMac);
+            wakePcInput = string(json, "wake_pc_input", wakePcInput);
             libraryButton = bool(json, "library_button", libraryButton);
             showLibraryPill = bool(json, "show_library_pill", showLibraryPill);
             wifiLabelWidth = integer(json, "wifi_label_width", wifiLabelWidth, 0, 300);
@@ -697,6 +705,8 @@ final class Config {
         int dockOpacity = json == null ? 100 : integer(json, "dock_opacity", 100, 30, 100);
         dockOpacity = chosenDockOpacity(choices.getInt(DOCK_OPACITY_KEY, -1), dockOpacity);
         clockFormat = choices.getString(CLOCK_FORMAT_KEY, clockFormat);
+        wakePcMac = choices.getString(WAKE_PC_MAC_KEY, wakePcMac);
+        wakePcInput = choices.getString(WAKE_PC_INPUT_KEY, wakePcInput).trim();
         String wallpaperOrder = json == null ? WallpaperRotation.ORDER_SHUFFLE
                 : string(json, "wallpaper_order", WallpaperRotation.ORDER_SHUFFLE);
         // An unknown order must not silently change how an existing collection rotates.
@@ -737,7 +747,7 @@ final class Config {
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly, inputsCecStateOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
-                settingsKeyClearTask, continueWatching, WakeOnLan.normalize(wakePcMac));
+                settingsKeyClearTask, continueWatching, WakeOnLan.normalize(wakePcMac), wakePcInput);
     }
 
     /**

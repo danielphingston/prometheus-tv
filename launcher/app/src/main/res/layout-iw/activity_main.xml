@@ -393,6 +393,16 @@
                     android:text="@string/inputs"
                     android:drawableStart="@drawable/ic_input"
                     android:nextFocusDown="@+id/grid" />
+
+                <!-- wake_pc_mac: the PC pill, at the start of the bar, which is the end of this mirrored list. -->
+                <TextView
+                    android:id="@+id/btnWakePc"
+                    style="@style/TopButton"
+                    android:visibility="gone"
+                    android:singleLine="true"
+                    android:text="@string/wake_pc"
+                    android:drawableStart="@drawable/ic_wake_pc"
+                    android:nextFocusDown="@+id/grid" />
             </LinearLayout>
         </RelativeLayout>
 

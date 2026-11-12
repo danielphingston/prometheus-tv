@@ -191,6 +191,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** wake_pc_mac: takes the network pill's place and wakes that PC, after a confirmation. */
     private TextView btnWakePc;
     private String wakePcMac = "";
+    private String wakePcInput = "";
     /** The network pill's icon as last set, so a refresh that changes nothing does not lay the top bar out again. */
     private int wifiIcon;
     /** The pills have been filled in once; later resumes refresh them after the first frame. */
@@ -862,6 +863,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
         btnWakePc = findViewById(R.id.btnWakePc);
         wakePcMac = cfg.wakePcMac;
+        wakePcInput = cfg.wakePcInput;
         if (!wakePcMac.isEmpty() && !cfg.topMenu) {
             btnWifi.setVisibility(View.GONE);
             btnWakePc.setVisibility(View.VISIBLE);
@@ -934,7 +936,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
                 return true;
             }
-            int firstButton = btnInputs.getVisibility() == View.VISIBLE ? R.id.btnInputs : firstTopButton().getId();
+            // The PC pill (wake_pc_mac) sits before Inputs, and firstTopButton finds it first.
+            int firstButton = btnInputs.getVisibility() == View.VISIBLE && btnWakePc.getVisibility() != View.VISIBLE
+                    ? R.id.btnInputs : firstTopButton().getId();
             int leftButton = rtlMenuBar ? R.id.btnSettings : firstButton;
             int rightButton = rtlMenuBar ? firstButton : R.id.btnSettings;
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) return v.getId() == leftButton;
@@ -3060,22 +3064,34 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.invalidate();   // a resume that changes nothing on screen still draws once, so the refresh runs
     }
 
-    /** The Wake PC pill: asks first, then sends the magic packet off the main thread. */
+    /** The PC pill: asks first, then sends the magic packet off the main thread and opens the PC's input. */
     private void confirmWakePc() {
+        String input = wakePcInput;
+        CharSequence inputName = input.isEmpty() ? null : WakeOnLan.inputLabel(this, input);
         new AlertDialog.Builder(this)
-                .setTitle(R.string.wake_pc_confirm_title)
-                .setMessage(R.string.wake_pc_confirm)
-                .setPositiveButton(R.string.wake_pc_send, (d, w) -> {
-                    Context app = getApplicationContext();
-                    String mac = wakePcMac;
-                    new Thread(() -> {
-                        boolean sent = WakeOnLan.send(app, mac);
-                        runOnUiThread(() -> Toast.makeText(app,
-                                sent ? R.string.wake_pc_sent : R.string.wake_pc_failed, Toast.LENGTH_SHORT).show());
-                    }, "wake-pc").start();
+                .setTitle(inputName == null ? R.string.wake_pc_confirm_title : R.string.wake_pc_confirm_title_input)
+                .setMessage(inputName == null ? getString(R.string.wake_pc_confirm)
+                        : getString(R.string.wake_pc_confirm_input, inputName))
+                .setPositiveButton(inputName == null ? R.string.wake_pc_send : R.string.wake_pc_switch, (d, w) -> {
+                    // Sent either way: a PC that is already on ignores it. With an input, the switch itself shows
+                    // it worked, so only a failure gets a toast.
+                    sendWakePc(inputName == null);
+                    // The PC takes a few seconds to wake; its picture comes up on the input when it does.
+                    if (inputName != null) openInput(input);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /** Sends the wake signal off the main thread; with toast, says that it went out. A failure always says so. */
+    private void sendWakePc(boolean toast) {
+        Context app = getApplicationContext();
+        String mac = wakePcMac;
+        new Thread(() -> {
+            boolean sent = WakeOnLan.send(app, mac);
+            if (toast || !sent) runOnUiThread(() -> Toast.makeText(app,
+                    sent ? R.string.wake_pc_sent : R.string.wake_pc_failed, Toast.LENGTH_SHORT).show());
+        }, "wake-pc").start();
     }
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
