@@ -2608,6 +2608,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         else if (below != null) y = lm.getDecoratedTop(below) - continueRow.heightPx();
         else y = -10 * continueRow.heightPx();     // scrolled far away: off screen
         row.setTranslationY(grid.getTop() + y);
+        // The grid's top edge cuts the dock off as it scrolls up under the clock; the row lives outside the grid,
+        // so cut it at the same line.
+        int cut = Math.round(-y);
+        if (cut <= 0) row.setClipBounds(null);
+        else row.setClipBounds(new Rect(0, Math.min(cut, continueRow.heightPx()), row.getWidth(), continueRow.heightPx()));
         if (dock != null) {
             View card = dock.findViewById(R.id.card);
             int start = grid.getLeft() + dock.getLeft() + (card != null ? card.getLeft() : 0);
