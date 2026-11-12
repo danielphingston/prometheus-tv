@@ -349,6 +349,16 @@
                     android:drawableStart="@drawable/ic_wifi"
                     android:nextFocusDown="@+id/grid" />
 
+                <!-- wake_pc_mac: shown in the network pill's place. -->
+                <TextView
+                    android:id="@+id/btnWakePc"
+                    style="@style/TopButton"
+                    android:visibility="gone"
+                    android:singleLine="true"
+                    android:text="@string/wake_pc"
+                    android:drawableStart="@drawable/ic_wake_pc"
+                    android:nextFocusDown="@+id/grid" />
+
                 <TextView
                     android:id="@+id/btnVpn"
                     style="@style/TopButton"

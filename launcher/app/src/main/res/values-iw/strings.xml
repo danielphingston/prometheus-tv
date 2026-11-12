@@ -153,4 +153,10 @@
     <string name="clock_format_12">12 שעות</string>
     <string name="clock_format_24">24 שעות</string>
     <string name="continue_watching_title">המשך צפייה</string>
+    <string name="wake_pc">הפעלת מחשב</string>
+    <string name="wake_pc_confirm_title">להפעיל את המחשב?</string>
+    <string name="wake_pc_confirm">שולח אות Wake-on-LAN למחשב ברשת הזו.</string>
+    <string name="wake_pc_send">הפעלה</string>
+    <string name="wake_pc_sent">אות ההפעלה נשלח</string>
+    <string name="wake_pc_failed">לא ניתן לשלוח את אות ההפעלה</string>
 </resources>

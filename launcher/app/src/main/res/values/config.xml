@@ -192,6 +192,11 @@
          the apps publish and cached on the TV. Down from the dock reaches it. Also "continue_watching" in a theme's
          config.json. -->
     <bool name="continue_watching">false</bool>
+
+    <!-- A Wake PC pill in the Wi-Fi pill's place: OK asks first, then sends a Wake-on-LAN magic packet to this MAC on the
+         TV's own network (UDP broadcast, ports 9 and 7). Empty: no pill. The PC must allow wake by magic packet. Also
+         "wake_pc_mac" in a theme's config.json. -->
+    <string name="wake_pc_mac" translatable="false"></string>
     <!-- A force stop of the launcher (Settings, a cleaner app, am force-stop) takes HomeKeyService and InputKeyService
          off the enabled list. true: Home puts the helpers that were running back when it starts; one turned off in
          Settings stays off. Needs WRITE_SECURE_SETTINGS, which build-and-install grants with RESTORE_KEY_SERVICES=1

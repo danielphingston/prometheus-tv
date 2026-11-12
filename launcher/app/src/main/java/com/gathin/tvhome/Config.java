@@ -142,6 +142,8 @@ final class Config {
     final boolean settingsKeyClearTask;
     /** A Continue watching row below the dock, from other apps' Watch Next rows and preview channels (config.xml continue_watching). */
     final boolean continueWatching;
+    /** Wake-on-LAN target: 12 hex digits, or empty for no Wake PC pill (config.xml wake_pc_mac). */
+    final String wakePcMac;
     /** App library as a round button in the top bar (config.xml library_button); needs app_library. */
     final boolean libraryButton;
     /** The App library pill after the last Home row; false hides it while libraryButton is on (show_library_pill). */
@@ -299,7 +301,7 @@ final class Config {
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean homeIgnoreChannelKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly, boolean inputsCecStateOnly,
                    int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap,
-                   boolean settingsKeyClearTask, boolean continueWatching) {
+                   boolean settingsKeyClearTask, boolean continueWatching, String wakePcMac) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -353,6 +355,7 @@ final class Config {
         this.glowSnap = glowSnap;
         this.settingsKeyClearTask = settingsKeyClearTask;
         this.continueWatching = continueWatching;
+        this.wakePcMac = wakePcMac;
         this.libraryButton = libraryButton;
         this.showLibraryPill = showLibraryPill;
         this.wifiLabelWidth = wifiLabelWidth;
@@ -487,6 +490,7 @@ final class Config {
         boolean glowSnap = res.getBoolean(R.bool.glow_snap);
         boolean settingsKeyClearTask = res.getBoolean(R.bool.settings_key_clear_task);
         boolean continueWatching = res.getBoolean(R.bool.continue_watching);
+        String wakePcMac = res.getString(R.string.wake_pc_mac);
         boolean libraryButton = res.getBoolean(R.bool.library_button);
         boolean showLibraryPill = res.getBoolean(R.bool.show_library_pill);
         int wifiLabelWidth = res.getInteger(R.integer.wifi_label_width);
@@ -604,6 +608,7 @@ final class Config {
             glowSnap = bool(json, "glow_snap", glowSnap);
             settingsKeyClearTask = bool(json, "settings_key_clear_task", settingsKeyClearTask);
             continueWatching = bool(json, "continue_watching", continueWatching);
+            wakePcMac = string(json, "wake_pc_mac", wakePcMac);
             libraryButton = bool(json, "library_button", libraryButton);
             showLibraryPill = bool(json, "show_library_pill", showLibraryPill);
             wifiLabelWidth = integer(json, "wifi_label_width", wifiLabelWidth, 0, 300);
@@ -732,7 +737,7 @@ final class Config {
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly, inputsCecStateOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
-                settingsKeyClearTask, continueWatching);
+                settingsKeyClearTask, continueWatching, WakeOnLan.normalize(wakePcMac));
     }
 
     /**

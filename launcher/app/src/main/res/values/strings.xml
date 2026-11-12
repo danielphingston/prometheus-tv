@@ -160,4 +160,11 @@
     <string name="clock_format_24">24-hour</string>
     <!-- Heading of the row below the dock (config.xml continue_watching). -->
     <string name="continue_watching_title">Continue Watching</string>
+    <!-- The top-bar pill and its confirmation (config.xml wake_pc_mac). -->
+    <string name="wake_pc">Wake PC</string>
+    <string name="wake_pc_confirm_title">Wake the PC?</string>
+    <string name="wake_pc_confirm">Sends a Wake-on-LAN signal to the PC on this network.</string>
+    <string name="wake_pc_send">Wake</string>
+    <string name="wake_pc_sent">Wake signal sent</string>
+    <string name="wake_pc_failed">Couldn\'t send the wake signal</string>
 </resources>
