@@ -185,6 +185,13 @@
          2K NSTV, Google TV 14). Also "settings_key_clear_task" in a theme's config.json. -->
     <bool name="settings_key_clear_task">false</bool>
 
+
+    <!-- A Continue watching row below the dock: what other apps publish as Watch Next (Prime Video and others) and in
+         a preview channel named Continue watching (Stremio), with posters and a progress bar. OK resumes the item in
+         its app. Needs READ_TV_LISTINGS, which build-and-install.sh grants; posters are downloaded from the addresses
+         the apps publish and cached on the TV. Down from the dock reaches it. Also "continue_watching" in a theme's
+         config.json. -->
+    <bool name="continue_watching">false</bool>
     <!-- A force stop of the launcher (Settings, a cleaner app, am force-stop) takes HomeKeyService and InputKeyService
          off the enabled list. true: Home puts the helpers that were running back when it starts; one turned off in
          Settings stays off. Needs WRITE_SECURE_SETTINGS, which build-and-install grants with RESTORE_KEY_SERVICES=1

@@ -360,6 +360,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean appLibrarySelection;
     private boolean libraryOkOpens;
     private boolean libraryFocusPending;
+    /** config.xml continue_watching: the row below the dock, or null when it is off. */
+    private ContinueRow continueRow;
+    /** The column focus left the dock or the first grid row from, to go back to from the Continue watching row. */
+    private int continueColumn;
     private RecyclerView.OnScrollListener pendingFocusScroll;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -702,6 +706,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Order savedOrder = Order.load(Order.file(this));
         adapter.setSavedOrder(Order.ranks(savedOrder, dockApps), Order.docked(savedOrder, dockApps));
         grid.setAdapter(adapter);
+        if (cfg.continueWatching && dockRow && !singleRow) setUpContinueRow();
 
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
@@ -726,6 +731,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // A single row never shows the names under its tiles (the title above the row names the app), so the
             // 7dp gap and 22dp label item_app.xml keeps for them would only lift the row: sit it that much lower.
             if (singleRow && !cfg.alwaysShowNames) want += (int) (29 * density);
+            // continue_watching: raise the dock just enough for the row under it to fit on screen, no higher than
+            // the title's room above the dock.
+            if (continueRow != null && continueRow.hasItems()) {
+                View dock = grid.getLayoutManager() == null ? null : grid.getLayoutManager().findViewByPosition(0);
+                int band = dock != null ? grid.getLayoutManager().getDecoratedMeasuredHeight(dock) - continueRow.heightPx() : dockRow;
+                int lift = continueRow.heightPx() + (int) (12 * density) - (h - want - band);
+                int floor = Math.max(shelfClearance, cfg.dockTitle ? (int) (AppAdapter.TITLE_ROOM_DP * density) : 0);
+                if (lift > 0) want = Math.max(Math.min(want, floor), want - lift);
+            }
             if (grid.getPaddingTop() != want) {
                 grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
                 // A vertical grid parks the dock on the new padding line by scrolling (onTileFocused); a sideways
@@ -1090,6 +1104,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        if (continueRow != null) continueRow.refresh(this::onContinueRowChanged);
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -1379,6 +1394,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (continueRow != null) continueRow.destroy();
         RemoteKeys.release(this);
         cancelHoldOk();
         if (gameDay != null) gameDay.shutdown();
@@ -2462,6 +2478,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return GridNavigation.atHorizontalEdge(position, rowCount, COLUMNS,
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
+        // continue_watching: the row sits between the dock and the first grid row.
+        if (continueRow != null && continueRow.hasItems()) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && position < COLUMNS) {
+                continueColumn = position;
+                focusContinueRow();
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP && position >= COLUMNS && position < 2 * COLUMNS) {
+                continueColumn = position - COLUMNS;
+                focusContinueRow();
+                return true;
+            }
+        }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
             target = position - COLUMNS;
@@ -2478,6 +2507,97 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.playSoundEffect(keyCode == KeyEvent.KEYCODE_DPAD_UP
                 ? SoundEffectConstants.NAVIGATION_UP : SoundEffectConstants.NAVIGATION_DOWN);
         return true;
+    }
+
+    // ---- continue watching ----------------------------------------------------------------------
+
+    /** Adds the Continue watching row in a gap under the dock row and keeps it there while the grid scrolls. */
+    private void setUpContinueRow() {
+        continueRow = new ContinueRow(this, new ContinueRow.Host() {
+            @Override public void onRowUp() {
+                focusTile(Math.min(continueColumn, Math.max(0, adapter.dockFilled() - 1)));
+                grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
+            }
+
+            @Override public void onRowDown() {
+                int count = adapter.appCount();
+                if (count > COLUMNS) focusTile(Math.min(COLUMNS + continueColumn, count - 1));
+                else if (adapter.isLibraryAt(count)) focusLibrary();
+                else return;
+                grid.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
+            }
+
+            @Override public void onRowFocused() {
+                hideGlass();
+                hideHero();
+                revealContinueRow();
+            }
+        }, density);
+        ViewGroup wrapper = (ViewGroup) grid.getParent();
+        wrapper.addView(continueRow.view(), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                continueRow.heightPx(), Gravity.TOP));
+        grid.addItemDecoration(continueRow.gapDecoration(COLUMNS));
+        grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                placeContinueRow();
+            }
+        });
+        grid.getViewTreeObserver().addOnGlobalLayoutListener(this::placeContinueRow);
+    }
+
+    /** The row appeared, went, or changed: make room for it (or close the gap) and put it in place. */
+    private void onContinueRowChanged(boolean appearedOrWent) {
+        if (appearedOrWent) {
+            grid.invalidateItemDecorations();
+            if (!continueRow.hasItems() && continueRow.hasFocus()) focusTile(lastFocused);
+        }
+        grid.post(this::placeContinueRow);
+    }
+
+    /** Puts the row in the gap below the dock: under the dock's tiles, or above the first grid row once it scrolls. */
+    private void placeContinueRow() {
+        if (continueRow == null) return;
+        View row = continueRow.view();
+        RecyclerView.LayoutManager lm = grid.getLayoutManager();
+        if (lm == null) return;
+        View dock = null, below = null;
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            View child = grid.getChildAt(i);
+            int p = grid.getChildAdapterPosition(child);
+            if (p == 0 || (dock == null && p > 0 && p < COLUMNS)) dock = child;
+            else if (below == null && p >= COLUMNS && p < 2 * COLUMNS) below = child;
+        }
+        float y;
+        if (dock != null) y = lm.getDecoratedBottom(dock) - continueRow.heightPx();
+        else if (below != null) y = lm.getDecoratedTop(below) - continueRow.heightPx();
+        else y = -10 * continueRow.heightPx();     // scrolled far away: off screen
+        row.setTranslationY(grid.getTop() + y);
+        if (dock != null) {
+            View card = dock.findViewById(R.id.card);
+            int start = grid.getLeft() + dock.getLeft() + (card != null ? card.getLeft() : 0);
+            if (grid.getChildAdapterPosition(dock) == 0) continueRow.setStart(start);
+        }
+    }
+
+    private void focusContinueRow() {
+        cancelPendingFocusScroll();
+        placeContinueRow();
+        continueRow.focus();
+    }
+
+    /** Scrolls the grid so the whole row is on screen. */
+    private void revealContinueRow() {
+        View row = continueRow.view();
+        View wrapper = (View) grid.getParent();
+        float top = row.getTranslationY();
+        float bottom = top + continueRow.heightPx();
+        int margin = (int) (8 * density);
+        int dy = 0;
+        if (bottom > wrapper.getHeight() - margin) dy = (int) (bottom - (wrapper.getHeight() - margin));
+        else if (top < margin) dy = (int) (top - margin);
+        if (dy == 0) return;
+        if (animations && !reducedMotion) grid.smoothScrollBy(0, dy);
+        else grid.scrollBy(0, dy);
     }
 
     @Override public void onLibraryFocused() {
