@@ -2,6 +2,15 @@
   <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads. Strip the bloatware from any Android TV or Google TV over Wi-Fi and replace the ad-filled home screen with a clean launcher that looks like an Apple TV. No root, no cable, nothing uninstalled, and a one-line restore." width="800"></a>
 </p>
 
+> **Prometheus TV** is a fork of [Gathin23/cleanyourtv](https://github.com/Gathin23/cleanyourtv). It adds these to the launcher:
+>
+> - **Continue Watching**: a row of poster cards below the dock, filled from what your apps publish (Stremio, Prime Video and others), newest first.
+> - **PC pill**: wakes your PC over the network (Wake-on-LAN) and switches the TV to its HDMI input. If the PC is already on, it just switches.
+> - **Status line**: the Wi-Fi network's name and whether the PC is on, above the top-bar pills.
+> - **Settings menu**: the Settings pill opens a drop-down with Launcher settings and TV system settings.
+>
+> Each one is off until you switch it on. See [FORK.md](FORK.md) for how. Everything else matches upstream.
+
 <p align="center">
   Read in: <a href="README.he.md" lang="he" dir="rtl">עברית</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.zh-TW.md">正體中文</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.ja.md">日本語</a> · <a href="README.it.md">Italiano</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.nl.md">Nederlands</a> · <a href="README.de.md">Deutsch</a> · <a href="README.uk.md">Українська</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.uz.md">Oʻzbekcha</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a>
 </p>
