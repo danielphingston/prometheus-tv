@@ -72,9 +72,12 @@ leaves the home network. 255.255.255.255 is used only when the TV can't tell its
 
 - "Wake on Magic Packet" on in the network adapter's Advanced settings.
 - "Allow this device to wake the computer" under the adapter's Power Management.
-- Usually a BIOS setting.
+- Usually a BIOS setting: "Wake on LAN" or "Power On by PCI-E" on.
+- To wake from a full shutdown, not only sleep: "ErP" (or "Deep Sleep") off in the BIOS. ErP cuts power to the
+  network port when the PC is off, so nothing reaches it; the port's light stays dark. This was the fix on the
+  tested PC.
 
-Wired Ethernet is the reliable case. Waking from a full shutdown on Windows often also needs Fast startup off.
+Wired Ethernet is the reliable case.
 
 A line above the pills takes over from the hidden Wi-Fi pill: the network name (Android shows it only while the
 TV's Location setting is on; otherwise it says Wi-Fi or Ethernet) and, once a PC input is set, a green **PC on** or
