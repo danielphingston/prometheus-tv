@@ -17,10 +17,11 @@
 
     <!-- Apps pinned to the dock row at the bottom, in this order. Missing apps are skipped. -->
     <string-array name="dock_apps">
-        <item>com.netflix.ninja</item>
-        <item>com.amazon.amazonvideo.livingroom</item>
-        <item>com.google.android.youtube.tv</item>
+        <item>com.stremio.one</item>
         <item>in.startv.hotstar</item>
+        <item>org.smarttube.stable</item>
+        <item>com.netflix.ninja</item>
+        <item>com.lagradost.cloudstream3</item>
     </string-array>
     <!-- With fewer dock_apps than columns (or a dock app that is not installed), the free dock slots take
          the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
@@ -29,12 +30,11 @@
 
     <!-- Apps never shown as tiles (e.g. the Live TV app, which the Inputs menu already covers). -->
     <string-array name="hidden_apps">
-        <item>com.mediatek.wwtv.tvcenter</item>
-        <item>com.mitv.gallery</item>
+        <item>com.realtek.tv</item>
     </string-array>
 
     <!-- The TV's Live TV / tuner app, offered at the end of the Inputs menu. Leave empty to omit. -->
-    <string name="live_tv_package" translatable="false">com.mediatek.wwtv.tvcenter</string>
+    <string name="live_tv_package" translatable="false">com.realtek.tv</string>
 
     <!-- Open the Live TV app above the first time Home comes up after the TV is switched on, for sets that are
          mostly used for broadcast TV. Once per boot: Home after that stays Home. Can also be set with
@@ -193,13 +193,12 @@
          2K NSTV, Google TV 14). Also "settings_key_clear_task" in a theme's config.json. -->
     <bool name="settings_key_clear_task">false</bool>
 
-
     <!-- A Continue watching row below the dock: what other apps publish as Watch Next (Prime Video and others) and in
          a preview channel named Continue watching (Stremio), with posters and a progress bar. OK resumes the item in
          its app. Needs READ_TV_LISTINGS, which build-and-install.sh grants; posters are downloaded from the addresses
          the apps publish and cached on the TV. Down from the dock reaches it. Also "continue_watching" in a theme's
          config.json. -->
-    <bool name="continue_watching">false</bool>
+    <bool name="continue_watching">true</bool>
 
     <!-- A PC pill at the start of the top bar, before Inputs (the Wi-Fi pill is hidden): OK asks first, then sends a
          Wake-on-LAN magic packet to this MAC as a broadcast on the TV's own subnet (UDP port 9), and opens
@@ -209,6 +208,7 @@
     <!-- The TV input the PC is on (an input id from dumpsys tv_input), opened after the wake packet. Empty: stay on
          Home. Set on the TV in Launcher settings, which also takes the MAC address. Also "wake_pc_input" in a theme. -->
     <string name="wake_pc_input" translatable="false"></string>
+
     <!-- A force stop of the launcher (Settings, a cleaner app, am force-stop) takes HomeKeyService and InputKeyService
          off the enabled list. true: Home puts the helpers that were running back when it starts; one turned off in
          Settings stays off. Needs WRITE_SECURE_SETTINGS, which build-and-install grants with RESTORE_KEY_SERVICES=1
@@ -258,6 +258,15 @@
          where the firmware hands KEYCODE_GUIDE (172) to the stock launcher and no app ever receives it. Leave empty
          to omit. -->
     <string-array name="app_keys" translatable="false">
+        <!-- VU / Konka Realtek Google TV remote. -->
+        <item>KEYCODE_TV_INPUT:com.google.android.tv.inputplayer/.switcher.SelectInputActivity</item>
+        <item>scan:378:settings</item>
+        <item>scan:433:settings</item>
+        <item>KEYCODE_BUTTON_11:library</item>
+        <item>KEYCODE_BUTTON_4:com.netflix.ninja</item>
+        <item>KEYCODE_BUTTON_3:org.smarttube.stable</item>
+        <item>KEYCODE_BUTTON_8:com.amazon.amazonvideo.livingroom</item>
+        <item>KEYCODE_BUTTON_9:in.startv.hotstar</item>
     </string-array>
 
     <!-- Package of the stock launcher, for TVs whose firmware turns it back on after it was disabled. XGIMI's
@@ -332,7 +341,7 @@
     <bool name="launcher_settings_button">false</bool>
     <!-- A click on Settings drops a menu: Launcher settings and TV system settings first, then the hold-OK
          actions. Off by default; a theme can set "settings_menu": true. This fork only. -->
-    <bool name="settings_menu">false</bool>
+    <bool name="settings_menu">true</bool>
     <!-- The dock band as light frosted glass, like the Inputs, Wi-Fi and Settings pills, so a sky or wallpaper shows
          through it. false (the default) keeps the solid near-black band, or the cinematic shelf's dark glass. Can
          also be set with "dock_glass": true in a theme's config.json. -->
@@ -437,7 +446,7 @@
 
     <!-- Tiles per row in the grid; the dock always has this many slots. Tiles are 180dp wide at 4 columns and
          shrink to fit from 5 up (about 144dp at 5, 117dp at 6 on a 1080p TV). -->
-    <integer name="columns">4</integer>
+    <integer name="columns">5</integer>
 
     <!-- Basic motion is on; advanced effects are opt-in in the launcher's own Settings screen. -->
     <bool name="animations">true</bool>
